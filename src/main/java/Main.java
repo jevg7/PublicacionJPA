@@ -3,77 +3,159 @@ import Services.IDAO;
 import Services.ImplDAO;
 
 import java.time.LocalDate;
+import java.util.InputMismatchException;
 import java.util.List;
+import java.util.Scanner;
 
 public class Main {
 
     private static final IDAO dao = new ImplDAO();
-
-
-    public static void publicacionCrudPostgres() {
-        System.out.println("--- CRUD para Publicacion con PostgreSQL (ID con Secuencia) ---");
-
-        // 1. CREATE
-        System.out.println("\n1. Creando nueva publicacion...");
-        PublicacionPostgres nuevaPublicacion = new PublicacionPostgres();
-        nuevaPublicacion.setNombrePublicacion("Avances en IA");
-        nuevaPublicacion.setDescripcionPublicacion("Un resumen de los últimos avances en inteligencia artificial.");
-        nuevaPublicacion.setFechaPublicacion(LocalDate.now());
-        dao.insert(nuevaPublicacion);
-        System.out.println("Publicacion creada.");
-
-        // Para las pruebas, necesitamos recuperar el ID asignado por la secuencia.
-        List<PublicacionPostgres> publicacionesAfterCreate = dao.getAll("PublicacionPostgres.findAll", PublicacionPostgres.class);
-        Integer idCreado = publicacionesAfterCreate.isEmpty() ? null : publicacionesAfterCreate.get(publicacionesAfterCreate.size() - 1).getId();
-
-        if (idCreado == null) {
-            System.out.println("No se pudo obtener el ID de la publicación creada. Terminando prueba.");
-            return;
-        }
-        System.out.println("ID de la nueva publicación: " + idCreado);
-
-        // 2. READ (all)
-        System.out.println("\n2. Leyendo todas las publicaciones...");
-        List<PublicacionPostgres> publicaciones = dao.getAll("PublicacionPostgres.findAll", PublicacionPostgres.class);
-        if (publicaciones != null && !publicaciones.isEmpty()) {
-            publicaciones.forEach(System.out::println);
-        } else {
-            System.out.println("No se encontraron publicaciones.");
-        }
-
-        // 3. READ (by ID)
-        System.out.println("\n3. Buscando publicacion con ID: " + idCreado);
-        PublicacionPostgres pubEncontrada = dao.findById(idCreado, PublicacionPostgres.class);
-        if (pubEncontrada != null) {
-            System.out.println("Encontrada: " + pubEncontrada);
-
-            // 4. UPDATE
-            System.out.println("\n4. Actualizando publicacion...");
-            pubEncontrada.setDescripcionPublicacion("Descripción actualizada sobre los avances en IA y machine learning.");
-            dao.update(pubEncontrada);
-            PublicacionPostgres pubActualizada = dao.findById(idCreado, PublicacionPostgres.class);
-            System.out.println("Publicacion actualizada: " + pubActualizada);
-
-            // 5. DELETE
-            System.out.println("\n5. Eliminando publicacion...");
-            dao.delete(pubActualizada);
-            PublicacionPostgres pubEliminada = dao.findById(idCreado, PublicacionPostgres.class);
-            if (pubEliminada == null) {
-                System.out.println("Publicacion con ID " + idCreado + " eliminada correctamente.");
-            } else {
-                System.out.println("Error al eliminar la publicacion.");
-            }
-        } else {
-            System.out.println("No se pudo encontrar la publicación para actualizar y eliminar.");
-        }
-        System.out.println("\n--- Fin del CRUD para PostgreSQL ---");
-    }
-
-
-
+    private static final Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        publicacionCrudPostgres();
+        // Bucle principal del menú
+        while (true) {
+            mostrarMenu();
+            int opcion = leerEntero("Seleccione una opción: ");
 
+            switch (opcion) {
+                case 1:
+                    crearPublicacion();
+                    break;
+                case 2:
+                    listarPublicaciones();
+                    break;
+                case 3:
+                    buscarPublicacion();
+                    break;
+                case 4:
+                    actualizarPublicacion();
+                    break;
+                case 5:
+                    eliminarPublicacion();
+                    break;
+                case 0:
+                    System.out.println("Saliendo del programa...");
+                    return; // Termina el programa
+                default:
+                    System.out.println("Opción no válida. Intente de nuevo.");
+            }
+            System.out.println(); // Salto de línea para claridad
+        }
+    }
+
+    private static void mostrarMenu() {
+        System.out.println("--- CRUD de Publicaciones ---");
+        System.out.println("1. Crear nueva publicación");
+        System.out.println("2. Listar todas las publicaciones");
+        System.out.println("3. Buscar publicación por ID");
+        System.out.println("4. Actualizar publicación");
+        System.out.println("5. Eliminar publicación");
+        System.out.println("0. Salir");
+        System.out.println("-----------------------------");
+    }
+
+    private static void crearPublicacion() {
+        System.out.println("\n--- 1. Crear Nueva Publicación ---");
+        String nombre = leerTexto("Ingrese el nombre de la publicación: ");
+        String descripcion = leerTexto("Ingrese la descripción: ");
+
+        PublicacionPostgres nuevaPublicacion = new PublicacionPostgres();
+        nuevaPublicacion.setNombrePublicacion(nombre);
+        nuevaPublicacion.setDescripcionPublicacion(descripcion);
+        nuevaPublicacion.setFechaPublicacion(LocalDate.now());
+
+        dao.insert(nuevaPublicacion);
+        System.out.println("¡Publicación creada exitosamente!");
+        // Nota: El ID se asigna automáticamente por la secuencia en la BD.
+    }
+
+    private static void listarPublicaciones() {
+        System.out.println("\n--- 2. Listar Todas las Publicaciones ---");
+        List<PublicacionPostgres> publicaciones = dao.getAll("PublicacionPostgres.findAll", PublicacionPostgres.class);
+
+        if (publicaciones == null || publicaciones.isEmpty()) {
+            System.out.println("No se encontraron publicaciones.");
+        } else {
+            publicaciones.forEach(System.out::println);
+        }
+    }
+
+    private static void buscarPublicacion() {
+        System.out.println("\n--- 3. Buscar Publicación por ID ---");
+        int id = leerEntero("Ingrese el ID de la publicación a buscar: ");
+        PublicacionPostgres pub = dao.findById(id, PublicacionPostgres.class);
+
+        if (pub != null) {
+            System.out.println("Publicación encontrada: " + pub);
+        } else {
+            System.out.println("No se encontró ninguna publicación con el ID: " + id);
+        }
+    }
+
+    private static void actualizarPublicacion() {
+        System.out.println("\n--- 4. Actualizar Publicación ---");
+        int id = leerEntero("Ingrese el ID de la publicación a actualizar: ");
+        PublicacionPostgres pub = dao.findById(id, PublicacionPostgres.class);
+
+        if (pub == null) {
+            System.out.println("No se encontró ninguna publicación con el ID: " + id);
+            return;
+        }
+
+        System.out.println("Datos actuales: " + pub);
+        String nombre = leerTexto("Ingrese el nuevo nombre (deje en blanco para no cambiar): ");
+        String descripcion = leerTexto("Ingrese la nueva descripción (deje en blanco para no cambiar): ");
+
+        if (nombre != null && !nombre.trim().isEmpty()) {
+            pub.setNombrePublicacion(nombre);
+        }
+        if (descripcion != null && !descripcion.trim().isEmpty()) {
+            pub.setDescripcionPublicacion(descripcion);
+        }
+
+        dao.update(pub);
+        System.out.println("¡Publicación actualizada exitosamente!");
+        System.out.println("Nuevos datos: " + dao.findById(id, PublicacionPostgres.class));
+    }
+
+    private static void eliminarPublicacion() {
+        System.out.println("\n--- 5. Eliminar Publicación ---");
+        int id = leerEntero("Ingrese el ID de la publicación a eliminar: ");
+        PublicacionPostgres pub = dao.findById(id, PublicacionPostgres.class);
+
+        if (pub == null) {
+            System.out.println("No se encontró ninguna publicación con el ID: " + id);
+            return;
+        }
+
+        System.out.println("Se eliminará la siguiente publicación: " + pub);
+        String confirmacion = leerTexto("¿Está seguro? (S/N): ");
+
+        if (confirmacion.equalsIgnoreCase("S")) {
+            dao.delete(pub);
+            System.out.println("¡Publicación eliminada exitosamente!");
+        } else {
+            System.out.println("Eliminación cancelada.");
+        }
+    }
+
+    private static String leerTexto(String mensaje) {
+        System.out.print(mensaje);
+        return scanner.nextLine();
+    }
+
+    private static int leerEntero(String mensaje) {
+        while (true) {
+            try {
+                System.out.print(mensaje);
+                int numero = scanner.nextInt();
+                scanner.nextLine(); // Limpiar el buffer (el salto de línea)
+                return numero;
+            } catch (InputMismatchException e) {
+                System.out.println("Error: Por favor, ingrese un número entero válido.");
+                scanner.nextLine(); // Limpiar el buffer de la entrada incorrecta
+            }
+        }
     }
 }
